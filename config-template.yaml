@@ -1,0 +1,61 @@
+global:
+  # set timer to scan all directories in all tasks, and fix the improper permissions.
+  # set empty to turn off global scan.
+  # cron style.
+  trigger: '0 0 */6 * * *'
+
+tasks:
+    # glob patterns.
+    # support multiple of directories.
+    # array.
+  - directories:
+      - /chmodtimertest/**/*
+      - /chmodtimertest1/**/*.mp4
+    
+    # owner user.
+    # depends on your system. usually 0 is for root.
+    # remove to preserve original user.
+    # number.
+    uid: 0
+
+    # owner group.
+    # depends on your system. usually 0 is for root.
+    # remove to preserve original group.
+    # number.
+    gid: 0
+
+    # target permission for directories.
+    # remove to preserve original permission.
+    # number.
+    modedir: 777
+
+    # target permission for files.
+    # remove to preserve original permission.
+    # number.
+    modefile: 666
+
+    # set timer to scan all directories above.
+    # remove to turn off this scan.
+    # cron style.
+    trigger: '0 0 */2 * * *'
+
+    # when set true, global scan will ignore the directories of this task.
+    # remove or preserve false, global scan will contain this task.
+    # boolean.
+    ignoreGlobal: false
+
+    # when set to false directories and files will not be altered when they are created.
+    # default true. all new directories and files will be altered.
+    # boolean.
+    monitoring: true
+
+  - directories:
+      - /chmodtimertest2/**/*.jpg
+    modefile: 777
+
+# cron
+# 0 * * * * *      HH:mm:00     at every 00  second per minute
+# 45 * * * * *     HH:mm:45     at every 45 second per minute
+# 0 */5 * * * *    HH:05:00     at every 05  minute per hour, HH:10:00, HH:15:00 e.g.
+# 0 10 5 * * *     05:10:00     at every day 05:10:00
+# 0 10 */7 * * *   08:20:00     at every 7 hour and 10 minute, next: 15:30:00, next: 23:40:00 e.g.
