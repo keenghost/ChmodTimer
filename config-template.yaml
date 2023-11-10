@@ -26,12 +26,12 @@ tasks:
 
     # target permission for directories.
     # remove to preserve original permission.
-    # number.
+    # number between 0 and 777.
     modedir: 777
 
     # target permission for files.
     # remove to preserve original permission.
-    # number.
+    # number between 0 and 777.
     modefile: 666
 
     # set timer to scan all directories above.
