@@ -1,7 +1,7 @@
 # ChmodTimer
 
 ## Introduction
-Change permission of directories and files by timer or creation.<br>
+Change permission or owner of directories and files by timer or create action.
 
 
 I'm using this for my UNRAID nas, due to some files created by docker containers that can not be wrote with my SMB account. That makes a lot of annoyings when I want to edit files through my Windows PC.
