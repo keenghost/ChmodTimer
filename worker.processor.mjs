@@ -23,6 +23,7 @@ function execProcess() {
   }
 
   processor.processing = true
+
   const current = processor.queue.shift()
   const worker = new Worker('./worker.execprocess.mjs')
 

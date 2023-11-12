@@ -17,7 +17,7 @@ function submitQueue() {
 
 parentPort.on('message', rawData => {
   const { taskId, directories, chokidarOptions } = ParseJSON(rawData)
-console.log(chokidarOptions)
+
   const watcher = chokidar.watch(directories, _.assign({
     usePolling: true,
     interval: 600,

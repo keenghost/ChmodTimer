@@ -17,6 +17,7 @@ function addQueue(inQueue) {
 
 function checkConfig(inConfig) {
   const tasks = inConfig.tasks || []
+
   for (const task of tasks) {
     if (task.hasOwnProperty('modedir') && (task.modedir < 0 || task.modedir > 777)) {
       console.error('modedir must between 0 and 777')
@@ -52,6 +53,7 @@ const tasks = (config['tasks'] || []).map(task => {
   nextId += 1
   return { taskId: nextId, ...task }
 })
+
 for (const task of tasks) {
   TASKS.set(task.taskId, task)
 }
@@ -59,9 +61,11 @@ for (const task of tasks) {
 if (global.trigger) {
   const globalTrackTasks = tasks.filter(task => !task.ignoreGlobal)
   const cronWorker = new Worker('./worker.cron.mjs')
+
   cronWorker.on('message', data => {
     addQueue(ParseJSON(data))
   })
+
   cronWorker.postMessage(strTriggerTasks({
     trigger: global.trigger,
     tasks: globalTrackTasks.map(task => ({
@@ -90,9 +94,11 @@ for (const task of tasks) {
 
   if (task.trigger) {
     const cronWorker = new Worker('./worker.cron.mjs')
+
     cronWorker.on('message', data => {
       addQueue(ParseJSON(data))
     })
+
     cronWorker.postMessage(strTriggerTasks({
       trigger: task.trigger,
       tasks: [{ taskId: task.taskId, directories: task.directories }],
