@@ -11,7 +11,7 @@ parentPort.on('message', rawData => {
     const queue = []
 
     for (const task of tasks) {
-      const paths = globSync(task.dirs)
+      const paths = globSync(task.directories)
 
       for (const path of paths) {
         queue.push({ path, taskId: task.taskId })

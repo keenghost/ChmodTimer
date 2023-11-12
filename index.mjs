@@ -1,7 +1,7 @@
 import fs from 'fs'
 import yaml from 'yaml'
 import { Worker } from 'worker_threads'
-import { strArrPathTask, strTaskIdDirs, strTriggerTasks } from './json-stringify.mjs'
+import { strArrPathTask, strTriggerTasks } from './json-stringify.mjs'
 import ParseJSON from 'parse-json'
 import _ from 'lodash'
 
@@ -17,6 +17,7 @@ function addQueue(inQueue) {
 
 function checkConfig(inConfig) {
   const tasks = inConfig.tasks || []
+
   for (const task of tasks) {
     if (task.hasOwnProperty('modedir') && (task.modedir < 0 || task.modedir > 777)) {
       console.error('modedir must between 0 and 777')
@@ -52,6 +53,7 @@ const tasks = (config['tasks'] || []).map(task => {
   nextId += 1
   return { taskId: nextId, ...task }
 })
+
 for (const task of tasks) {
   TASKS.set(task.taskId, task)
 }
@@ -59,14 +61,16 @@ for (const task of tasks) {
 if (global.trigger) {
   const globalTrackTasks = tasks.filter(task => !task.ignoreGlobal)
   const cronWorker = new Worker('./worker.cron.mjs')
+
   cronWorker.on('message', data => {
     addQueue(ParseJSON(data))
   })
+
   cronWorker.postMessage(strTriggerTasks({
     trigger: global.trigger,
     tasks: globalTrackTasks.map(task => ({
       taskId: task.taskId,
-      dirs: task.directories,
+      directories: task.directories,
     })),
   }))
 }
@@ -81,17 +85,23 @@ for (const task of tasks) {
       addQueue(ParseJSON(data))
     })
 
-    watcherWorker.postMessage(strTaskIdDirs({ taskId: task.taskId, dirs: task.directories}))
+    watcherWorker.postMessage(JSON.stringify({
+      taskId: task.taskId,
+      directories: task.directories,
+      chokidarOptions: task.chokidarOptions,
+    }))
   }
 
   if (task.trigger) {
     const cronWorker = new Worker('./worker.cron.mjs')
+
     cronWorker.on('message', data => {
       addQueue(ParseJSON(data))
     })
+
     cronWorker.postMessage(strTriggerTasks({
       trigger: task.trigger,
-      tasks: [{ taskId: task.taskId, dirs: task.directories }],
+      tasks: [{ taskId: task.taskId, directories: task.directories }],
     }))
   }
 }

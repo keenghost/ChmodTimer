@@ -23,10 +23,12 @@ function execProcess() {
   }
 
   processor.processing = true
+
   const current = processor.queue.shift()
   const worker = new Worker('./worker.execprocess.mjs')
 
   worker.on('exit', () => {
+    // console.log('Task Finished:', current.path)
     processor.processing = false
     setTimeout(execProcess)
   })

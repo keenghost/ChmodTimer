@@ -49,18 +49,6 @@ export const strPathTask = FastJsonStringify({
   required: ['path', 'task'],
 })
 
-export const strTaskIdDirs = FastJsonStringify({
-  type: 'object',
-  properties: {
-    taskId: { type: 'string' },
-    dirs: {
-      type: 'array',
-      items: { type: 'string' },
-    },
-  },
-  required: ['taskId', 'dirs'],
-})
-
 export const strTriggerTasks = FastJsonStringify({
   type: 'object',
   properties: {
@@ -71,12 +59,12 @@ export const strTriggerTasks = FastJsonStringify({
         type: 'object',
         properties: {
           taskId: { type: 'string' },
-          dirs: {
+          directories: {
             type: 'array',
             items: { type: 'string' },
           },
         },
-        required: ['taskId', 'dirs'],
+        required: ['taskId', 'directories'],
       },
     },
   },
