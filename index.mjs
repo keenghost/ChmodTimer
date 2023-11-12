@@ -1,64 +1,18 @@
 import fs from 'fs'
 import yaml from 'yaml'
-import cron from 'cron'
-import chokidar from 'chokidar'
-import { globSync } from 'glob'
-import { promisify } from 'util'
+import { Worker } from 'worker_threads'
+import { strArrPathTask, strTaskIdDirs, strTriggerTasks } from './json-stringify.mjs'
+import ParseJSON from 'parse-json'
+import _ from 'lodash'
 
-const asyncStat = promisify(fs.stat)
-const asyncChmod = promisify(fs.chmod)
-const asyncChown = promisify(fs.chown)
-
-const processor = {
-  processing: false,
-  queue: [], // [ { path: string, task: configObject } ]
+const record = {
+  prequeue: [],
 }
 
-async function execProcess() {
-  if (processor.processing) {
-    return
-  }
+const TASKS = new Map()
 
-  const current = processor.queue.shift()
-
-  if (!current) {
-    return
-  }
-
-  processor.processing = true
-
-  try {
-    const stats = await asyncStat(current.path)
-
-    if ((stats.isDirectory() && current.task.hasOwnProperty('modedir')) || (!stats.isDirectory() && current.task.hasOwnProperty('modefile'))) {
-      const mode = stats.mode.toString(8)
-      const modeString = mode.substring(mode.length - 3)
-      const targetmode = stats.isDirectory() ? current.task.modedir : current.task.modefile
-
-      if (modeString !== targetmode.toString()) {
-        await asyncChmod(current.path, parseInt(targetmode, 8))
-      }
-    }
-
-    if (current.task.hasOwnProperty('uid') || current.task.hasOwnProperty('gid')) {
-      const targetUID = current.task.hasOwnProperty('uid') ? current.task.uid : stats.uid
-      const targetGID = current.task.hasOwnProperty('gid') ? current.task.gid : stats.gid
-
-      if (stats.uid !== targetUID || stats.gid !== targetGID) {
-        await asyncChown(current.path, targetUID, targetGID)
-      }
-    }
-  } catch (err) {
-    console.error(err)
-  }
-
-  processor.processing = false
-  setTimeout(execProcess)
-}
-
-function addQueue(inPath, inTask) {
-  processor.queue.push({ path: inPath, task: inTask })
-  setTimeout(execProcess)
+function addQueue(inQueue) {
+  record.prequeue.push(...inQueue.map(task => ({ path: task.path, task: _.pick(TASKS.get(task.taskId), ['uid', 'gid', 'modir', 'modefile']) })))
 }
 
 function checkConfig(inConfig) {
@@ -92,42 +46,61 @@ const config = yaml.parse(fs.readFileSync('./config/config.yaml', { encoding: 'u
 
 checkConfig(config)
 
+let nextId = 0
 const global = config['global'] || {}
-const tasks = config['tasks'] || []
+const tasks = (config['tasks'] || []).map(task => {
+  nextId += 1
+  return { taskId: nextId, ...task }
+})
+for (const task of tasks) {
+  TASKS.set(task.taskId, task)
+}
 
 if (global.trigger) {
-  new cron.CronJob(global.trigger, () => {
-    for (const task of tasks) {
-      if (global.ignoreGlobal) {
-        continue
-      }
-
-      const paths = globSync(task.directories)
-
-      for (const path of paths) {
-        addQueue(path, task)
-      }
-    }
-  }, null, true)
+  const globalTrackTasks = tasks.filter(task => !task.ignoreGlobal)
+  const cronWorker = new Worker('./worker.cron.mjs')
+  cronWorker.on('message', data => {
+    addQueue(ParseJSON(data))
+  })
+  cronWorker.postMessage(strTriggerTasks({
+    trigger: global.trigger,
+    tasks: globalTrackTasks.map(task => ({
+      taskId: task.taskId,
+      dirs: task.directories,
+    })),
+  }))
 }
 
 for (const task of tasks) {
   const monitoring = task.hasOwnProperty('monitoring') ? task.monitoring : true
 
   if (monitoring) {
-    const watcher = chokidar.watch(task.directories)
+    const watcherWorker = new Worker('./worker.watcher.mjs')
 
-    watcher.on('add', changedPath => addQueue(changedPath, task))
-    watcher.on('addDir', changedPath => addQueue(changedPath, task))
+    watcherWorker.on('message', data => {
+      addQueue(ParseJSON(data))
+    })
+
+    watcherWorker.postMessage(strTaskIdDirs({ taskId: task.taskId, dirs: task.directories}))
   }
 
   if (task.trigger) {
-    new cron.CronJob(task.trigger, () => {
-      const paths = globSync(task.directories)
-
-      for (const path of paths) {
-        addQueue(path, task)
-      }
-    }, null, true)
+    const cronWorker = new Worker('./worker.cron.mjs')
+    cronWorker.on('message', data => {
+      addQueue(ParseJSON(data))
+    })
+    cronWorker.postMessage(strTriggerTasks({
+      trigger: task.trigger,
+      tasks: [{ taskId: task.taskId, dirs: task.directories }],
+    }))
   }
 }
+
+const processorWorker = new Worker('./worker.processor.mjs')
+
+setInterval(() => {
+  if (record.prequeue.length > 0) {
+    processorWorker.postMessage(strArrPathTask(record.prequeue))
+    record.prequeue = []
+  }
+}, 3000)
