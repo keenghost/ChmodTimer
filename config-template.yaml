@@ -45,9 +45,19 @@ tasks:
     ignoreGlobal: false
 
     # when set to false directories and files will not be altered when they are created.
-    # default true. all new directories and files will be altered.
+    # default true. all new directories and files will be altered. based on chokidar.
     # boolean.
     monitoring: true
+
+    # https://github.com/paulmillr/chokidar#api reference to watch options.
+    # listing options are default values used in chmodtimer.
+    # options will only work when monitoring is true.
+    chokidarOptions:
+      usePolling: true
+      interval: 600
+      awaitWriteFinish: true
+      ignoreInitial: false
+      #...
 
   - directories:
       - /chmodtimertest2/**/*.jpg

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import yaml from 'yaml'
 import { Worker } from 'worker_threads'
-import { strArrPathTask, strTaskIdDirs, strTriggerTasks } from './json-stringify.mjs'
+import { strArrPathTask, strTriggerTasks } from './json-stringify.mjs'
 import ParseJSON from 'parse-json'
 import _ from 'lodash'
 
@@ -66,7 +66,7 @@ if (global.trigger) {
     trigger: global.trigger,
     tasks: globalTrackTasks.map(task => ({
       taskId: task.taskId,
-      dirs: task.directories,
+      directories: task.directories,
     })),
   }))
 }
@@ -81,7 +81,11 @@ for (const task of tasks) {
       addQueue(ParseJSON(data))
     })
 
-    watcherWorker.postMessage(strTaskIdDirs({ taskId: task.taskId, dirs: task.directories}))
+    watcherWorker.postMessage(JSON.stringify({
+      taskId: task.taskId,
+      directories: task.directories,
+      chokidarOptions: task.chokidarOptions,
+    }))
   }
 
   if (task.trigger) {
@@ -91,7 +95,7 @@ for (const task of tasks) {
     })
     cronWorker.postMessage(strTriggerTasks({
       trigger: task.trigger,
-      tasks: [{ taskId: task.taskId, dirs: task.directories }],
+      tasks: [{ taskId: task.taskId, directories: task.directories }],
     }))
   }
 }

@@ -1,3 +1,4 @@
+import _ from 'lodash'
 import chokidar from 'chokidar'
 import { parentPort } from 'worker_threads'
 import ParseJSON from 'parse-json'
@@ -15,13 +16,14 @@ function submitQueue() {
 }
 
 parentPort.on('message', rawData => {
-  const { taskId, dirs } = ParseJSON(rawData)
-
-  const watcher = chokidar.watch(dirs, {
+  const { taskId, directories, chokidarOptions } = ParseJSON(rawData)
+console.log(chokidarOptions)
+  const watcher = chokidar.watch(directories, _.assign({
     usePolling: true,
     interval: 600,
     awaitWriteFinish: true,
-  })
+    ignoreInitial: false,
+  }, chokidarOptions))
 
   watcher.on('add', changedPath => {
     record.queue.push({ path: changedPath, taskId })
