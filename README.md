@@ -11,6 +11,7 @@ I'm using this for my UNRAID nas, due to some files created by docker containers
 docker run -d --privileged
   -v your/config.yaml:/chmodtimer/config/config.yaml
   -v path-to-change-permission:/path-in-container
+  -e TZ=Asia/Shanghai
   keenghost/chmodtimer:latest
 ```
 ```path-in-container```: depends on config.yaml ```directories```.
