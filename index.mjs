@@ -12,7 +12,7 @@ const record = {
 const TASKS = new Map()
 
 function addQueue(inQueue) {
-  record.prequeue.push(...inQueue.map(task => ({ path: task.path, task: _.pick(TASKS.get(task.taskId), ['uid', 'gid', 'modir', 'modefile']) })))
+  record.prequeue.push(...inQueue.map(task => ({ path: task.path, task: _.pick(TASKS.get(task.taskId), ['uid', 'gid', 'modedir', 'modefile']) })))
 }
 
 function checkConfig(inConfig) {
