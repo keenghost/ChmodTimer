@@ -11,7 +11,7 @@ tasks:
   - directories:
       - /chmodtimertest/**/*
       - /chmodtimertest1/**/*.mp4
-    
+
     # owner user.
     # depends on your system. usually 0 is for root.
     # remove to preserve original user.
