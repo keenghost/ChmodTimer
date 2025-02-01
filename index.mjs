@@ -1,6 +1,6 @@
 import chokidar from 'chokidar'
 import cron from 'cron'
-import fs from 'fs'
+import fs, { promises as fsp } from 'fs'
 import { globSync } from 'glob'
 import yaml from 'yaml'
 
@@ -31,55 +31,60 @@ const record = {
 }
 
 function addQueue(inQueue) {
-  record.queue.push(...inQueue.filter(item => !record.queue.find(item1 => item1.path === item.path)))
-  setTimeout(runQueue)
+  record.queue = record.queue.concat(inQueue)
 }
 
-function runQueue() {
+async function runQueue() {
   if (record.running) {
     return
   }
 
-  const current = record.queue.shift()
-
-  if (!current) {
+  if (record.queue.length === 0) {
     return
   }
 
+  const queue = record.queue
+  record.queue = []
   record.running = true
 
-  try {
-    const stats = fs.statSync(current.path)
+  while (queue.length > 0) {
+    const current = record.queue.shift()
 
-    if ((stats.isDirectory() && current.hasOwnProperty('modedir')) || (!stats.isDirectory() && current.hasOwnProperty('modefile'))) {
-      const mode = stats.mode.toString(8)
-      const modeString = mode.substring(mode.length - 3)
-      const targetmode = stats.isDirectory() ? current.modedir : current.modefile
-
-      if (modeString !== targetmode.toString()) {
-        fs.chmodSync(current.path, parseInt(targetmode, 8))
-
-        console.log(time(), 'chmod:', current.path)
-      }
+    if (!current) {
+      return
     }
 
-    if (current.hasOwnProperty('uid') || current.hasOwnProperty('gid')) {
-      const targetUID = current.hasOwnProperty('uid') ? current.uid : stats.uid
-      const targetGID = current.hasOwnProperty('gid') ? current.gid : stats.gid
+    try {
+      const stats = await fsp.stat(current.path)
 
-      if (stats.uid !== targetUID || stats.gid !== targetGID) {
-        fs.chownSync(current.path, targetUID, targetGID)
+      if ((stats.isDirectory() && current.hasOwnProperty('modedir')) || (!stats.isDirectory() && current.hasOwnProperty('modefile'))) {
+        const mode = stats.mode.toString(8)
+        const modeString = mode.substring(mode.length - 3)
+        const targetmode = stats.isDirectory() ? current.modedir : current.modefile
 
-        console.log(time(), 'chown:', current.path)
+        if (modeString !== targetmode.toString()) {
+          await fsp.chmod(current.path, parseInt(targetmode, 8))
+
+          console.log(time(), 'chmod:', current.path)
+        }
       }
+
+      if (current.hasOwnProperty('uid') || current.hasOwnProperty('gid')) {
+        const targetUID = current.hasOwnProperty('uid') ? current.uid : stats.uid
+        const targetGID = current.hasOwnProperty('gid') ? current.gid : stats.gid
+
+        if (stats.uid !== targetUID || stats.gid !== targetGID) {
+          await fsp.chown(current.path, targetUID, targetGID)
+
+          console.log(time(), 'chown:', current.path)
+        }
+      }
+    } catch (err) {
+      console.error(time, 'fail:', err.message || current.path)
     }
-  } catch (err) {
-    console.error(time, 'fail:', err.message || current.path)
   }
 
   record.running = false
-
-  setTimeout(runQueue)
 }
 
 function checkConfig(inConfig) {
@@ -170,3 +175,5 @@ for (const task of tasks) {
     }, null, true)
   }
 }
+
+setInterval(runQueue, 3000)
