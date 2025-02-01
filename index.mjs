@@ -48,10 +48,10 @@ async function runQueue() {
   record.running = true
 
   while (queue.length > 0) {
-    const current = record.queue.shift()
+    const current = queue.shift()
 
     if (!current) {
-      return
+      break
     }
 
     try {
